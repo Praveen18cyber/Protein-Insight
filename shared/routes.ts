@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { insertAnalysisSessionSchema, analysisSessions, AnalysisResultSchema } from './schema';
+import { insertAnalysisSessionSchema, analysisSessions, AnalysisResultSchema, ProteinSourceSchema } from './schema';
 
 // ============================================
 // SHARED ERROR SCHEMAS
@@ -26,7 +26,8 @@ export const api = {
       method: 'POST' as const,
       path: '/api/analysis',
       input: insertAnalysisSessionSchema.extend({
-        fileContent: z.string().optional(), // Raw PDB text content
+        proteinSources: z.array(ProteinSourceSchema),
+        proteinContents: z.record(z.string(), z.string()), // protein name -> PDB content
       }),
       responses: {
         201: z.custom<typeof analysisSessions.$inferSelect>(),
@@ -37,7 +38,7 @@ export const api = {
       method: 'GET' as const,
       path: '/api/analysis/:id',
       responses: {
-        200: z.custom<typeof analysisSessions.$inferSelect>(), // Returns the session with the 'result' JSONB
+        200: z.custom<typeof analysisSessions.$inferSelect>(),
         404: errorSchemas.notFound,
       },
     },
@@ -49,13 +50,13 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
-    downloadPdb: {
-        method: 'GET' as const,
-        path: '/api/analysis/:id/pdb',
-        responses: {
-            200: z.string(), // PDB text content
-            404: errorSchemas.notFound,
-        }
+    downloadStructure: {
+      method: 'GET' as const,
+      path: '/api/analysis/:id/structure',
+      responses: {
+        200: z.string(), // Combined PDB or CSV
+        404: errorSchemas.notFound,
+      }
     }
   },
 };

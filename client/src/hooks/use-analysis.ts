@@ -1,9 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, buildUrl, type CreateAnalysisRequest, type AnalysisSession } from "@shared/routes";
+import { api, buildUrl } from "@shared/routes";
 import { useLocation } from "wouter";
+import type { AnalysisSession, ProteinSource } from "@shared/schema";
 
-// Helper to validate API responses against Zod schemas
-// In a real app, this would wrap the fetch calls, but here we trust the backend types via shared schema
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(url, { ...options, credentials: "include" });
   if (!res.ok) {
@@ -13,7 +12,6 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   return res.json();
 }
 
-// GET /api/analysis/:id
 export function useAnalysis(id: number | null) {
   return useQuery({
     queryKey: [api.analysis.get.path, id],
@@ -21,27 +19,28 @@ export function useAnalysis(id: number | null) {
       if (!id) throw new Error("ID required");
       const url = buildUrl(api.analysis.get.path, { id });
       const data = await fetchJson<AnalysisSession>(url);
-      
-      // We parse it to ensure it matches our expectations (optional but good practice)
       return api.analysis.get.responses[200].parse(data);
     },
     enabled: !!id,
     refetchInterval: (query) => {
-      // Poll if pending
       const status = query.state.data?.status;
       return status === "pending" || status === "processing" ? 1000 : false;
     },
   });
 }
 
-// POST /api/analysis
+export interface CreateAnalysisRequest {
+  title: string;
+  proteinSources: ProteinSource[];
+  proteinContents: Record<string, string>;
+}
+
 export function useCreateAnalysis() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
   return useMutation({
     mutationFn: async (data: CreateAnalysisRequest) => {
-      // Validate input before sending (client-side validation)
       const validated = api.analysis.create.input.parse(data);
       
       const res = await fetch(api.analysis.create.path, {
@@ -59,16 +58,14 @@ export function useCreateAnalysis() {
       return api.analysis.create.responses[201].parse(await res.json());
     },
     onSuccess: (data) => {
-      // Navigate to the result page immediately
       setLocation(`/analysis/${data.id}`);
     },
   });
 }
 
-// Hooks for download URLs (not strictly fetching data, but useful helpers)
 export function useDownloadUrls(id: number) {
   return {
     reportUrl: buildUrl(api.analysis.downloadReport.path, { id }),
-    pdbUrl: buildUrl(api.analysis.downloadPdb.path, { id }),
+    structureUrl: buildUrl(api.analysis.downloadStructure.path, { id }),
   };
 }

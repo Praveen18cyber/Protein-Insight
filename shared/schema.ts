@@ -7,12 +7,9 @@ export const analysisSessions = pgTable("analysis_sessions", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   status: text("status").notNull().default("pending"), // pending, completed, failed
-  pdbId: text("pdb_id"), // if fetched from RCSB
-  originalFilename: text("original_filename"), // if uploaded
-  proteinName: text("protein_name"),
+  proteinSources: jsonb("protein_sources").notNull(), // Array of {pdbId?, filename?, name?}
   createdAt: timestamp("created_at").defaultNow(),
-  // Store the full analysis result as JSONB to avoid millions of rows for atoms/interactions
-  result: jsonb("result"), 
+  result: jsonb("result"), // Full analysis result
 });
 
 // === BASE SCHEMAS ===
@@ -20,12 +17,18 @@ export const insertAnalysisSessionSchema = createInsertSchema(analysisSessions).
   id: true, 
   createdAt: true, 
   status: true,
-  result: true 
+  result: true,
+  proteinSources: true,
 });
 
 // === EXPLICIT API CONTRACT TYPES ===
 
-// Core Data Structures for Analysis
+export const ProteinSourceSchema = z.object({
+  name: z.string(),
+  pdbId: z.string().optional(),
+  filename: z.string().optional(),
+});
+
 export const AtomSchema = z.object({
   serial: z.number(),
   name: z.string(),
@@ -41,6 +44,7 @@ export const AtomSchema = z.object({
   tempFactor: z.number(),
   element: z.string(),
   charge: z.string().optional(),
+  proteinName: z.string(), // Which protein this atom belongs to
 });
 
 export const ResidueSchema = z.object({
@@ -61,43 +65,51 @@ export const InteractionTypeSchema = z.enum([
 
 export const InteractionSchema = z.object({
   id: z.string(),
-  proteinA: z.string(), // Chain ID
-  proteinB: z.string(), // Chain ID
+  proteinA: z.string(), // Protein name
+  proteinB: z.string(), // Protein name
+  chainA: z.string(), // Chain ID
+  chainB: z.string(), // Chain ID
   residueA: z.string(), // e.g., "ALA 123"
   residueB: z.string(), // e.g., "VAL 456"
   atomA: z.string(),
   atomB: z.string(),
   distance: z.number(),
   type: InteractionTypeSchema,
+  isIntraMolecular: z.boolean(), // True if same protein, False if between proteins
 });
 
 export const ChainMetricsSchema = z.object({
+  proteinName: z.string(),
   chainId: z.string(),
   residueCount: z.number(),
   atomCount: z.number(),
   interactingResidues: z.number(),
+  intraProteinInteractions: z.number(),
+  interProteinInteractions: z.number(),
 });
 
 export const AnalysisResultSchema = z.object({
   summary: z.object({
-    pdbId: z.string().optional(),
-    filename: z.string().optional(),
-    chains: z.array(z.string()),
+    totalProteins: z.number(),
+    totalChains: z.number(),
+    totalAtoms: z.number(),
     totalInteractions: z.number(),
+    intraProteinInteractions: z.number(),
+    interProteinInteractions: z.number(),
   }),
   chains: z.array(ChainMetricsSchema),
   interactions: z.array(InteractionSchema),
-  // We might include the parsed structure if needed for client-side viz, 
-  // but usually client loads the PDB string directly into NGL.
 });
 
 export type Atom = z.infer<typeof AtomSchema>;
 export type Interaction = z.infer<typeof InteractionSchema>;
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
+export type ProteinSource = z.infer<typeof ProteinSourceSchema>;
 
 // Request types
 export type CreateAnalysisRequest = z.infer<typeof insertAnalysisSessionSchema> & {
-  fileContent?: string; // Optional: Uploaded PDB content
+  proteinSources: ProteinSource[];
+  proteinContents: Record<string, string>; // Map protein name -> PDB content
 };
 
 // Response types

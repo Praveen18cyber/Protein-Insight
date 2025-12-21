@@ -9,25 +9,10 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async createAnalysisSession(session: CreateAnalysisRequest): Promise<AnalysisSession> {
-    const { fileContent, ...dbSession } = session; 
-    // We don't save the raw fileContent string in the DB row directly if it's huge, 
-    // but the Schema has a 'result' jsonb column which will store the ANALYSIS result.
-    // The request 'session' object here comes from the route handler AFTER analysis is done,
-    // so it should contain the 'result'.
-    
-    // Wait, the CreateAnalysisRequest type in schema.ts has 'fileContent' (optional).
-    // But 'insertAnalysisSessionSchema' excludes 'result'.
-    // We need to be able to insert the result.
-    
-    // Let's refine: The caller (route) will prepare the object to insert.
-    // We will cast/manipulate as needed.
+    const { proteinContents, proteinSources, ...dbSession } = session;
     
     const [created] = await db.insert(analysisSessions).values({
-        ...dbSession,
-        // Ensure result is cast correctly if passed in dbSession (it might be strict due to Zod omission)
-        // actually dbsession is strictly typed to the InsertSchema which omits result.
-        // We need to allow passing result. 
-        // Let's rely on the fact that I can pass extra props to drizzle insert if I cast or if I change the input type here.
+      ...dbSession,
     } as any).returning();
     return created;
   }
