@@ -3,19 +3,24 @@ import { useEffect, useRef, useState } from "react";
 import * as NGL from "ngl";
 import { Loader2, Maximize2, Minimize2 } from "lucide-react";
 
-interface NGLViewerProps {
-  pdbContent?: string | null;
-  pdbId?: string | null;
-  className?: string;
-  interactions?: any[]; // Could pass interactions to visualize later
+interface ProteinToLoad {
+  pdbId?: string;
+  pdbContent?: string;
+  name: string;
 }
 
-export function NGLViewer({ pdbContent, pdbId, className, interactions }: NGLViewerProps) {
+interface NGLViewerProps {
+  proteins?: ProteinToLoad[];
+  className?: string;
+}
+
+export function NGLViewer({ proteins = [], className }: NGLViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [loadedCount, setLoadedCount] = useState(0);
 
   // Initialize Stage
   useEffect(() => {
@@ -34,7 +39,6 @@ export function NGLViewer({ pdbContent, pdbId, className, interactions }: NGLVie
 
       return () => {
         window.removeEventListener("resize", handleResize);
-        // Clean up stage if method exists in version
         try { stage.dispose(); } catch (e) {}
       };
     } catch (err) {
@@ -43,47 +47,75 @@ export function NGLViewer({ pdbContent, pdbId, className, interactions }: NGLVie
     }
   }, []);
 
-  // Load Structure
+  // Load All Structures
   useEffect(() => {
     const stage = stageRef.current;
-    if (!stage || (!pdbContent && !pdbId)) return;
+    if (!stage || !proteins || proteins.length === 0) return;
 
     setLoading(true);
     setError(null);
+    setLoadedCount(0);
 
     stage.removeAllComponents();
 
-    const loadPromise = pdbContent
-      ? stage.loadFile(new Blob([pdbContent], { type: 'text/plain' }), { ext: "pdb" })
-      : stage.loadFile(`rcsb://${pdbId}`);
+    let successCount = 0;
+    let hasError = false;
 
-    loadPromise
-      .then((component: any) => {
-        // Default representation: Cartoon + Licorice for heteroatoms
-        component.addRepresentation("cartoon", {
-          colorScheme: "chainid", // Color by chain to see interactions easily
-          quality: "high"
-        });
-        
-        component.addRepresentation("licorice", {
-          sele: "hetero",
-          colorScheme: "element"
-        });
+    // Color schemes for different proteins
+    const colors = [
+      "spectrum",
+      "bfactor",
+      "chainid",
+      "residueindex",
+      "hydrophobicity"
+    ];
 
-        component.autoView();
+    Promise.all(
+      proteins.map((protein, idx) => {
+        const colorScheme = colors[idx % colors.length];
         
-        // If we had coordinates for interactions, we could add shape representations here
-        // e.g., drawing lines between interacting atoms
-        
-        setLoading(false);
+        const loadPromise = protein.pdbContent
+          ? stage.loadFile(new Blob([protein.pdbContent], { type: 'text/plain' }), { ext: "pdb" })
+          : protein.pdbId
+          ? stage.loadFile(`rcsb://${protein.pdbId}`)
+          : Promise.reject(new Error("No content or ID"));
+
+        return loadPromise
+          .then((component: any) => {
+            // Add cartoon representation
+            component.addRepresentation("cartoon", {
+              colorScheme: colorScheme,
+              quality: "high"
+            });
+            
+            // Add licorice for heteroatoms
+            component.addRepresentation("licorice", {
+              sele: "hetero",
+              colorScheme: "element"
+            });
+
+            successCount++;
+            setLoadedCount(successCount);
+            return true;
+          })
+          .catch((err: any) => {
+            console.error(`Failed to load ${protein.name}:`, err);
+            hasError = true;
+            return false;
+          });
       })
-      .catch((err: any) => {
-        console.error("Structure Load Error:", err);
-        setError("Failed to load protein structure");
+    ).then(() => {
+      if (successCount > 0) {
+        // Auto-fit view to all loaded structures
+        setTimeout(() => stage.autoView(), 100);
         setLoading(false);
-      });
+      } else {
+        setError("Failed to load any protein structures");
+        setLoading(false);
+      }
+    });
 
-  }, [pdbContent, pdbId]);
+  }, [proteins]);
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
@@ -116,7 +148,9 @@ export function NGLViewer({ pdbContent, pdbId, className, interactions }: NGLVie
       {loading && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm">
           <Loader2 className="w-10 h-10 text-primary animate-spin mb-3" />
-          <span className="font-medium text-muted-foreground">Rendering structure...</span>
+          <span className="font-medium text-muted-foreground">
+            Loading structures... {loadedCount}/{proteins.length}
+          </span>
         </div>
       )}
 
@@ -131,7 +165,7 @@ export function NGLViewer({ pdbContent, pdbId, className, interactions }: NGLVie
 
       {/* Controls Overlay */}
       <div className="absolute top-4 right-4 z-20 flex gap-2">
-         <button
+        <button
           onClick={toggleFullscreen}
           className="p-2 rounded-lg bg-white/90 shadow-md hover:bg-white text-foreground transition-all"
           title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
@@ -142,7 +176,7 @@ export function NGLViewer({ pdbContent, pdbId, className, interactions }: NGLVie
 
       <div className="absolute bottom-4 left-4 z-20 pointer-events-none">
         <div className="bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg shadow-sm border border-border text-xs font-mono text-muted-foreground">
-          {pdbId ? `PDB: ${pdbId}` : 'Uploaded Structure'}
+          {proteins.length > 0 ? `${proteins.length} structures` : 'Structure Viewer'}
         </div>
       </div>
     </div>
