@@ -42,9 +42,17 @@ export const api = {
         404: errorSchemas.notFound,
       },
     },
-    downloadReport: {
+    downloadInterProtein: {
       method: 'GET' as const,
-      path: '/api/analysis/:id/report',
+      path: '/api/analysis/:id/download/inter-protein',
+      responses: {
+        200: z.string(), // CSV content
+        404: errorSchemas.notFound,
+      },
+    },
+    downloadIntraProtein: {
+      method: 'GET' as const,
+      path: '/api/analysis/:id/download/intra-protein',
       responses: {
         200: z.string(), // CSV content
         404: errorSchemas.notFound,
@@ -52,7 +60,7 @@ export const api = {
     },
     downloadStructure: {
       method: 'GET' as const,
-      path: '/api/analysis/:id/structure',
+      path: '/api/analysis/:id/download/structure',
       responses: {
         200: z.string(), // Combined PDB or CSV
         404: errorSchemas.notFound,

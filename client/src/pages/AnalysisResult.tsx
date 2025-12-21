@@ -13,7 +13,7 @@ export default function AnalysisResultPage() {
   const id = match ? parseInt(params.id) : null;
   
   const { data: session, isLoading, error } = useAnalysis(id);
-  const { reportUrl, structureUrl } = useDownloadUrls(id || 0);
+  const { interProteinUrl, intraProteinUrl, structureUrl } = useDownloadUrls(id || 0);
 
   if (isLoading || !session) {
     return (
@@ -79,22 +79,30 @@ export default function AnalysisResultPage() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <a 
-              href={reportUrl}
+              href={interProteinUrl}
               target="_blank"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-white hover:bg-muted/50 text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-semibold transition-colors"
             >
-              <Download className="w-4 h-4" />
-              Report
+              <Download className="w-3.5 h-3.5" />
+              Inter-Protein
+            </a>
+            <a 
+              href={intraProteinUrl}
+              target="_blank"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-orange-200 bg-orange-50 hover:bg-orange-100 text-orange-700 text-xs font-semibold transition-colors"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Intra-Protein
             </a>
             <a 
               href={structureUrl}
               target="_blank"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border bg-white hover:bg-muted/50 text-sm font-medium transition-colors"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-white hover:bg-muted/50 text-sm font-medium transition-colors"
             >
-              <Download className="w-4 h-4" />
-              Structure
+              <Download className="w-3.5 h-3.5" />
+              Coordinates
             </a>
           </div>
         </div>

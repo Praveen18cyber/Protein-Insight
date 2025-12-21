@@ -173,6 +173,24 @@ export function generateInteractionCSV(interactions: Interaction[]): string {
   return header + rows;
 }
 
+export function generateInterProteinCSV(interactions: Interaction[]): string {
+  const filtered = interactions.filter(i => !i.isIntraMolecular);
+  const header = "Protein_A,Chain_A,Residue_A,Atom_A,Protein_B,Chain_B,Residue_B,Atom_B,Type,Distance_Angstrom\n";
+  const rows = filtered.map(i => 
+    `${i.proteinA},${i.chainA},"${i.residueA}","${i.atomA}",${i.proteinB},${i.chainB},"${i.residueB}","${i.atomB}",${i.type},${i.distance.toFixed(3)}`
+  ).join('\n');
+  return header + rows;
+}
+
+export function generateIntraProteinCSV(interactions: Interaction[]): string {
+  const filtered = interactions.filter(i => i.isIntraMolecular);
+  const header = "Protein,Chain_A,Chain_B,Residue_A,Atom_A,Residue_B,Atom_B,Type,Distance_Angstrom\n";
+  const rows = filtered.map(i => 
+    `${i.proteinA},${i.chainA},${i.chainB},"${i.residueA}","${i.atomA}","${i.residueB}","${i.atomB}",${i.type},${i.distance.toFixed(3)}`
+  ).join('\n');
+  return header + rows;
+}
+
 export function generateStructureCSV(atoms: Atom[]): string {
   const header = "Protein,Chain,Residue,Residue_Seq,Atom_Name,Atom_Serial,X,Y,Z,Element,Occupancy,B_Factor\n";
   const rows = atoms.map(a => 

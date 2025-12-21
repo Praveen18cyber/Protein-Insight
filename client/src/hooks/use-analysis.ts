@@ -65,7 +65,8 @@ export function useCreateAnalysis() {
 
 export function useDownloadUrls(id: number) {
   return {
-    reportUrl: buildUrl(api.analysis.downloadReport.path, { id }),
+    interProteinUrl: buildUrl(api.analysis.downloadInterProtein.path, { id }),
+    intraProteinUrl: buildUrl(api.analysis.downloadIntraProtein.path, { id }),
     structureUrl: buildUrl(api.analysis.downloadStructure.path, { id }),
   };
 }

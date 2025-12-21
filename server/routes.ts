@@ -2,7 +2,7 @@ import type { Express } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
-import { parsePDB, analyzeInteractions, generateInteractionCSV, generateStructureCSV } from "./services/pdb";
+import { parsePDB, analyzeInteractions, generateInteractionCSV, generateInterProteinCSV, generateIntraProteinCSV, generateStructureCSV } from "./services/pdb";
 import { z } from "zod";
 import { analysisSessions, AnalysisResultSchema, type ProteinSource } from "@shared/schema";
 import { db } from "./db";
@@ -82,8 +82,8 @@ export async function registerRoutes(
     res.json(session);
   });
 
-  // Download Interaction Report CSV
-  app.get(api.analysis.downloadReport.path, async (req, res) => {
+  // Download Inter-Protein Interactions CSV
+  app.get(api.analysis.downloadInterProtein.path, async (req, res) => {
     const id = parseInt(req.params.id);
     const session = await storage.getAnalysisSession(id);
     if (!session || !session.result) {
@@ -91,10 +91,26 @@ export async function registerRoutes(
     }
 
     const result = session.result as unknown as z.infer<typeof AnalysisResultSchema>;
-    const csv = generateInteractionCSV(result.interactions);
+    const csv = generateInterProteinCSV(result.interactions);
     
     res.header('Content-Type', 'text/csv');
-    res.attachment(`analysis_${id}_interactions.csv`);
+    res.attachment(`analysis_${id}_inter-protein.csv`);
+    res.send(csv);
+  });
+
+  // Download Intra-Protein Interactions CSV
+  app.get(api.analysis.downloadIntraProtein.path, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const session = await storage.getAnalysisSession(id);
+    if (!session || !session.result) {
+      return res.status(404).json({ message: "Analysis session or result not found" });
+    }
+
+    const result = session.result as unknown as z.infer<typeof AnalysisResultSchema>;
+    const csv = generateIntraProteinCSV(result.interactions);
+    
+    res.header('Content-Type', 'text/csv');
+    res.attachment(`analysis_${id}_intra-protein.csv`);
     res.send(csv);
   });
 
