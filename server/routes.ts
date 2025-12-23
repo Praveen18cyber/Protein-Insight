@@ -61,15 +61,19 @@ export async function registerRoutes(
       }
 
       // Perform Combined Analysis
+      console.time('analyzeInteractions');
       const result = analyzeInteractions(atomsByProtein);
+      console.timeEnd('analyzeInteractions');
 
       // Save to DB
+      console.log('Saving analysis to database...');
       const [session] = await db.insert(analysisSessions).values({
         title: input.title,
         status: "completed",
         proteinSources: input.proteinSources,
         result: result,
       }).returning();
+      console.log('Analysis saved successfully, session ID:', session.id);
 
       res.status(201).json(session);
     } catch (err) {

@@ -62,79 +62,110 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
     }
   }
 
-  // Analyze all pairwise interactions (both intra and inter)
-  for (let i = 0; i < allAtoms.length; i++) {
-    const a = allAtoms[i];
-    for (let j = i + 1; j < allAtoms.length; j++) {
-      const b = allAtoms[j];
-      
-      // Skip same atom
-      if (a.serial === b.serial && a.proteinName === b.proteinName) continue;
+  // Spatial grid for fast neighbor lookup (5Å cutoff = grid cell 5Å)
+  const GRID_SIZE = 5;
+  const grid: Record<string, Atom[]> = {};
+  
+  for (const atom of allAtoms) {
+    const gridX = Math.floor(atom.x / GRID_SIZE);
+    const gridY = Math.floor(atom.y / GRID_SIZE);
+    const gridZ = Math.floor(atom.z / GRID_SIZE);
+    const key = `${gridX},${gridY},${gridZ}`;
+    if (!grid[key]) grid[key] = [];
+    grid[key].push(atom);
+  }
 
-      const dx = a.x - b.x;
-      const dy = a.y - b.y;
-      const dz = a.z - b.z;
-      const distSq = dx*dx + dy*dy + dz*dz;
+  // Analyze interactions using spatial grid
+  const checked = new Set<string>();
+  
+  for (const atom_a of allAtoms) {
+    const gridX = Math.floor(atom_a.x / GRID_SIZE);
+    const gridY = Math.floor(atom_a.y / GRID_SIZE);
+    const gridZ = Math.floor(atom_a.z / GRID_SIZE);
 
-      // 5 Angstrom cutoff
-      if (distSq <= 25) {
-        const distance = Math.sqrt(distSq);
-        const isIntra = a.proteinName === b.proteinName;
-        
-        // Determine interaction type
-        let type: Interaction["type"] = "Other";
-        
-        const isHydrophobic = (res: string) => ['ALA','VAL','LEU','ILE','MET','PHE','TRP','PRO'].includes(res);
-        const isCharged = (res: string) => ['ARG','LYS','ASP','GLU','HIS'].includes(res);
-        
-        if (distance < 3.5) {
-          if ((a.element === 'N' || a.element === 'O') && (b.element === 'N' || b.element === 'O')) {
-            type = "Hydrogen Bond";
-          } else if (isCharged(a.resName) && isCharged(b.resName)) {
-            type = "Salt Bridge";
-          } else {
-            type = "Van der Waals";
+    // Check current cell and 26 neighboring cells
+    for (let dx = -1; dx <= 1; dx++) {
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dz = -1; dz <= 1; dz++) {
+          const key = `${gridX + dx},${gridY + dy},${gridZ + dz}`;
+          const neighbors = grid[key] || [];
+
+          for (const atom_b of neighbors) {
+            // Skip if already checked
+            const pairKey = `${Math.min(atom_a.serial, atom_b.serial)}-${Math.max(atom_a.serial, atom_b.serial)}`;
+            if (checked.has(pairKey)) continue;
+            checked.add(pairKey);
+
+            // Skip same atom
+            if (atom_a.serial === atom_b.serial && atom_a.proteinName === atom_b.proteinName) continue;
+
+            const dx = atom_a.x - atom_b.x;
+            const dy = atom_a.y - atom_b.y;
+            const dz = atom_a.z - atom_b.z;
+            const distSq = dx*dx + dy*dy + dz*dz;
+
+            // 5 Angstrom cutoff
+            if (distSq <= 25) {
+              const distance = Math.sqrt(distSq);
+              const isIntra = atom_a.proteinName === atom_b.proteinName;
+              
+              // Determine interaction type
+              let type: Interaction["type"] = "Other";
+              
+              const isHydrophobic = (res: string) => ['ALA','VAL','LEU','ILE','MET','PHE','TRP','PRO'].includes(res);
+              const isCharged = (res: string) => ['ARG','LYS','ASP','GLU','HIS'].includes(res);
+              
+              if (distance < 3.5) {
+                if ((atom_a.element === 'N' || atom_a.element === 'O') && (atom_b.element === 'N' || atom_b.element === 'O')) {
+                  type = "Hydrogen Bond";
+                } else if (isCharged(atom_a.resName) && isCharged(atom_b.resName)) {
+                  type = "Salt Bridge";
+                } else {
+                  type = "Van der Waals";
+                }
+              } else {
+                if (isHydrophobic(atom_a.resName) && isHydrophobic(atom_b.resName)) {
+                  type = "Hydrophobic";
+                } else {
+                  type = "Van der Waals";
+                }
+              }
+
+              const interaction: Interaction = {
+                id: `${atom_a.serial}-${atom_b.serial}`,
+                proteinA: atom_a.proteinName,
+                proteinB: atom_b.proteinName,
+                chainA: atom_a.chainID,
+                chainB: atom_b.chainID,
+                residueA: `${atom_a.resName} ${atom_a.resSeq}`,
+                residueB: `${atom_b.resName} ${atom_b.resSeq}`,
+                atomA: `${atom_a.name} (${atom_a.element})`,
+                atomB: `${atom_b.name} (${atom_b.element})`,
+                distance,
+                type,
+                isIntraMolecular: isIntra,
+              };
+
+              interactions.push(interaction);
+
+              // Track interacting residues
+              const keyA = `${atom_a.proteinName}:${atom_a.chainID}`;
+              const keyB = `${atom_b.proteinName}:${atom_b.chainID}`;
+              interactingResiduesByChain[keyA]?.add(atom_a.resSeq);
+              interactingResiduesByChain[keyB]?.add(atom_b.resSeq);
+
+              // Update metrics
+              const metricA = chainMetrics.find(m => m.proteinName === atom_a.proteinName && m.chainId === atom_a.chainID);
+              const metricB = chainMetrics.find(m => m.proteinName === atom_b.proteinName && m.chainId === atom_b.chainID);
+              if (metricA) {
+                if (isIntra) metricA.intraProteinInteractions++;
+                else metricA.interProteinInteractions++;
+              }
+              if (metricB && atom_a.proteinName !== atom_b.proteinName) {
+                metricB.interProteinInteractions++;
+              }
+            }
           }
-        } else {
-          if (isHydrophobic(a.resName) && isHydrophobic(b.resName)) {
-            type = "Hydrophobic";
-          } else {
-            type = "Van der Waals";
-          }
-        }
-
-        const interaction: Interaction = {
-          id: `${a.serial}-${b.serial}`,
-          proteinA: a.proteinName,
-          proteinB: b.proteinName,
-          chainA: a.chainID,
-          chainB: b.chainID,
-          residueA: `${a.resName} ${a.resSeq}`,
-          residueB: `${b.resName} ${b.resSeq}`,
-          atomA: `${a.name} (${a.element})`,
-          atomB: `${b.name} (${b.element})`,
-          distance,
-          type,
-          isIntraMolecular: isIntra,
-        };
-
-        interactions.push(interaction);
-
-        // Track interacting residues
-        const keyA = `${a.proteinName}:${a.chainID}`;
-        const keyB = `${b.proteinName}:${b.chainID}`;
-        interactingResiduesByChain[keyA]?.add(a.resSeq);
-        interactingResiduesByChain[keyB]?.add(b.resSeq);
-
-        // Update metrics
-        const metricA = chainMetrics.find(m => m.proteinName === a.proteinName && m.chainId === a.chainID);
-        const metricB = chainMetrics.find(m => m.proteinName === b.proteinName && m.chainId === b.chainID);
-        if (metricA) {
-          if (isIntra) metricA.intraProteinInteractions++;
-          else metricA.interProteinInteractions++;
-        }
-        if (metricB && a.proteinName !== b.proteinName) {
-          metricB.interProteinInteractions++;
         }
       }
     }
