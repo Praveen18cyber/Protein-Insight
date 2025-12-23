@@ -26,11 +26,23 @@ export async function registerRoutes(
         if (!pdbContent && source.pdbId) {
           // Fetch from RCSB
           try {
-            const rcsbRes = await fetch(`https://files.rcsb.org/download/${source.pdbId.toUpperCase()}.pdb`);
-            if (!rcsbRes.ok) throw new Error("Failed to fetch PDB");
+            const pdbIdUpper = source.pdbId.toUpperCase();
+            const fetchUrl = `https://files.rcsb.org/download/${pdbIdUpper}.pdb`;
+            console.log(`Fetching PDB: ${fetchUrl}`);
+            
+            const rcsbRes = await fetch(fetchUrl);
+            console.log(`Fetch response status: ${rcsbRes.status}`);
+            
+            if (!rcsbRes.ok) {
+              throw new Error(`HTTP ${rcsbRes.status}: ${rcsbRes.statusText}`);
+            }
+            
             pdbContent = await rcsbRes.text();
+            console.log(`Fetched ${pdbContent.length} bytes for ${pdbIdUpper}`);
           } catch (error) {
-            return res.status(400).json({ message: `Could not fetch PDB ID ${source.pdbId}` });
+            const errorMsg = error instanceof Error ? error.message : String(error);
+            console.error(`PDB fetch error for ${source.pdbId}:`, errorMsg);
+            return res.status(400).json({ message: `Could not fetch PDB ID ${source.pdbId}: ${errorMsg}` });
           }
         }
 
@@ -39,8 +51,10 @@ export async function registerRoutes(
         }
 
         const atoms = parsePDB(pdbContent, source.name);
+        console.log(`Parsed ${atoms.length} atoms for ${source.name}`);
+        
         if (atoms.length === 0) {
-          return res.status(400).json({ message: `Invalid PDB content for ${source.name}: No atoms found` });
+          return res.status(400).json({ message: `Invalid PDB content for ${source.name}: No atoms found. File size: ${pdbContent.length} bytes` });
         }
         
         atomsByProtein[source.name] = atoms;
