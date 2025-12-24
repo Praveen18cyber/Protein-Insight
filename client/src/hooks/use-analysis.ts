@@ -31,8 +31,8 @@ export function useAnalysis(id: number | null) {
 
 export interface CreateAnalysisRequest {
   title: string;
-  proteinSources: ProteinSource[];
-  proteinContents: Record<string, string>;
+  proteinSource: ProteinSource;
+  proteinContent: string;
 }
 
 export function useCreateAnalysis() {

@@ -26,8 +26,8 @@ export const api = {
       method: 'POST' as const,
       path: '/api/analysis',
       input: insertAnalysisSessionSchema.extend({
-        proteinSources: z.array(ProteinSourceSchema),
-        proteinContents: z.record(z.string(), z.string()), // protein name -> PDB content
+        proteinSource: ProteinSourceSchema,
+        proteinContent: z.string(), // PDB content
       }),
       responses: {
         201: z.custom<typeof analysisSessions.$inferSelect>(),

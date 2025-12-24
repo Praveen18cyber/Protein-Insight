@@ -7,7 +7,7 @@ export const analysisSessions = pgTable("analysis_sessions", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   status: text("status").notNull().default("pending"), // pending, completed, failed
-  proteinSources: jsonb("protein_sources").notNull(), // Array of {pdbId?, filename?, name?}
+  proteinSource: jsonb("protein_source").notNull(), // Single {pdbId?, filename?, name}
   createdAt: timestamp("created_at").defaultNow(),
   result: jsonb("result"), // Full analysis result
 });
@@ -18,7 +18,7 @@ export const insertAnalysisSessionSchema = createInsertSchema(analysisSessions).
   createdAt: true, 
   status: true,
   result: true,
-  proteinSources: true,
+  proteinSource: true,
 });
 
 // === EXPLICIT API CONTRACT TYPES ===
@@ -108,8 +108,8 @@ export type ProteinSource = z.infer<typeof ProteinSourceSchema>;
 
 // Request types
 export type CreateAnalysisRequest = z.infer<typeof insertAnalysisSessionSchema> & {
-  proteinSources: ProteinSource[];
-  proteinContents: Record<string, string>; // Map protein name -> PDB content
+  proteinSource: ProteinSource;
+  proteinContent: string; // PDB content
 };
 
 // Response types

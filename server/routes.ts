@@ -12,57 +12,50 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
   
-  // Create Analysis with Multiple Proteins
+  // Create Analysis with Single Protein
   app.post(api.analysis.create.path, async (req, res) => {
     try {
       const input = api.analysis.create.input.parse(req.body);
 
-      const atomsByProtein: Record<string, any[]> = {};
+      let pdbContent = input.proteinContent;
 
-      // Process each protein
-      for (const source of input.proteinSources) {
-        let pdbContent = input.proteinContents[source.name];
-
-        if (!pdbContent && source.pdbId) {
-          // Fetch from RCSB
-          try {
-            const pdbIdUpper = source.pdbId.toUpperCase();
-            const fetchUrl = `https://files.rcsb.org/download/${pdbIdUpper}.pdb`;
-            console.log(`Fetching PDB: ${fetchUrl}`);
-            
-            const rcsbRes = await fetch(fetchUrl);
-            console.log(`Fetch response status: ${rcsbRes.status}`);
-            
-            if (!rcsbRes.ok) {
-              throw new Error(`HTTP ${rcsbRes.status}: ${rcsbRes.statusText}`);
-            }
-            
-            pdbContent = await rcsbRes.text();
-            console.log(`Fetched ${pdbContent.length} bytes for ${pdbIdUpper}`);
-          } catch (error) {
-            const errorMsg = error instanceof Error ? error.message : String(error);
-            console.error(`PDB fetch error for ${source.pdbId}:`, errorMsg);
-            return res.status(400).json({ message: `Could not fetch PDB ID ${source.pdbId}: ${errorMsg}` });
+      if (!pdbContent && input.proteinSource.pdbId) {
+        // Fetch from RCSB
+        try {
+          const pdbIdUpper = input.proteinSource.pdbId.toUpperCase();
+          const fetchUrl = `https://files.rcsb.org/download/${pdbIdUpper}.pdb`;
+          console.log(`Fetching PDB: ${fetchUrl}`);
+          
+          const rcsbRes = await fetch(fetchUrl);
+          console.log(`Fetch response status: ${rcsbRes.status}`);
+          
+          if (!rcsbRes.ok) {
+            throw new Error(`HTTP ${rcsbRes.status}: ${rcsbRes.statusText}`);
           }
+          
+          pdbContent = await rcsbRes.text();
+          console.log(`Fetched ${pdbContent.length} bytes for ${pdbIdUpper}`);
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          console.error(`PDB fetch error for ${input.proteinSource.pdbId}:`, errorMsg);
+          return res.status(400).json({ message: `Could not fetch PDB ID ${input.proteinSource.pdbId}: ${errorMsg}` });
         }
-
-        if (!pdbContent) {
-          return res.status(400).json({ message: `No PDB content for protein: ${source.name}` });
-        }
-
-        const atoms = parsePDB(pdbContent, source.name);
-        console.log(`Parsed ${atoms.length} atoms for ${source.name}`);
-        
-        if (atoms.length === 0) {
-          return res.status(400).json({ message: `Invalid PDB content for ${source.name}: No atoms found. File size: ${pdbContent.length} bytes` });
-        }
-        
-        atomsByProtein[source.name] = atoms;
       }
 
-      // Perform Combined Analysis
+      if (!pdbContent) {
+        return res.status(400).json({ message: `No PDB content provided` });
+      }
+
+      const atoms = parsePDB(pdbContent, input.proteinSource.name);
+      console.log(`Parsed ${atoms.length} atoms for ${input.proteinSource.name}`);
+      
+      if (atoms.length === 0) {
+        return res.status(400).json({ message: `Invalid PDB content: No atoms found. File size: ${pdbContent.length} bytes` });
+      }
+
+      // Perform Analysis
       console.time('analyzeInteractions');
-      const result = analyzeInteractions(atomsByProtein);
+      const result = analyzeInteractions({ [input.proteinSource.name]: atoms });
       console.timeEnd('analyzeInteractions');
 
       // Save to DB
@@ -70,7 +63,7 @@ export async function registerRoutes(
       const [session] = await db.insert(analysisSessions).values({
         title: input.title,
         status: "completed",
-        proteinSources: input.proteinSources,
+        proteinSource: input.proteinSource,
         result: result,
       }).returning();
       console.log('Analysis saved successfully, session ID:', session.id);
@@ -141,25 +134,23 @@ export async function registerRoutes(
     }
 
     // Re-fetch and generate structure CSV
-    const sources = session.proteinSources as unknown as any[];
+    const source = session.proteinSource as unknown as any;
     const allAtoms: any[] = [];
 
     try {
-      for (const source of sources) {
-        let content: string;
-        
-        if (source.pdbId) {
-          const rcsbRes = await fetch(`https://files.rcsb.org/download/${source.pdbId.toUpperCase()}.pdb`);
-          if (!rcsbRes.ok) throw new Error("Failed to fetch");
-          content = await rcsbRes.text();
-        } else {
-          // Can't re-fetch uploaded files, skip
-          continue;
-        }
-
-        const atoms = parsePDB(content, source.name);
-        allAtoms.push(...atoms);
+      let content: string;
+      
+      if (source.pdbId) {
+        const rcsbRes = await fetch(`https://files.rcsb.org/download/${source.pdbId.toUpperCase()}.pdb`);
+        if (!rcsbRes.ok) throw new Error("Failed to fetch");
+        content = await rcsbRes.text();
+      } else {
+        // Can't re-fetch uploaded files
+        return res.status(400).json({ message: "Cannot generate structure CSV for uploaded files" });
       }
+
+      const atoms = parsePDB(content, source.name);
+      allAtoms.push(...atoms);
 
       if (allAtoms.length === 0) {
         return res.status(400).json({ message: "No structure data available" });
