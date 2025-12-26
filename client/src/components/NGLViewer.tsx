@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 // @ts-ignore - ngl doesn't have official types yet
 import * as NGL from "ngl";
 import { Loader2, Maximize2, Minimize2 } from "lucide-react";
@@ -14,7 +14,7 @@ interface NGLViewerProps {
   className?: string;
 }
 
-export function NGLViewer({ proteins = [], className }: NGLViewerProps) {
+function NGLViewerComponent({ proteins = [], className }: NGLViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
@@ -30,9 +30,14 @@ export function NGLViewer({ proteins = [], className }: NGLViewerProps) {
       const stage = new NGL.Stage(containerRef.current, {
         backgroundColor: "white",
         tooltip: true,
+        sampleLevel: -1, // Disable supersampling for better performance
+        antialias: false, // Disable anti-aliasing during interaction
       });
       
       stageRef.current = stage;
+      
+      // Optimize rendering for performance
+      stage.setQuality("medium");
 
       const handleResize = () => stage.handleResize();
       window.addEventListener("resize", handleResize);
@@ -82,16 +87,19 @@ export function NGLViewer({ proteins = [], className }: NGLViewerProps) {
 
         return loadPromise
           .then((component: any) => {
-            // Add cartoon representation
+            // Add cartoon representation with medium quality
             component.addRepresentation("cartoon", {
               colorScheme: colorScheme,
-              quality: "high"
+              quality: "medium",
+              aspectRatio: 5.0
             });
             
-            // Add licorice for heteroatoms
-            component.addRepresentation("licorice", {
+            // Add simple ball+stick for heteroatoms (lighter than licorice)
+            component.addRepresentation("ball+stick", {
               sele: "hetero",
-              colorScheme: "element"
+              colorScheme: "element",
+              scale: 0.8,
+              aspectRatio: 1.0
             });
 
             successCount++;
@@ -182,3 +190,5 @@ export function NGLViewer({ proteins = [], className }: NGLViewerProps) {
     </div>
   );
 }
+
+export const NGLViewer = memo(NGLViewerComponent);
