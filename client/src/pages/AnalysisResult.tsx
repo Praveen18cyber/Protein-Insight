@@ -140,10 +140,10 @@ export default function AnalysisResultPage() {
           <div className="flex flex-col gap-6 min-h-0 overflow-y-auto">
             <div className="bg-white rounded-2xl border border-border shadow-sm p-1 h-96 shrink-0">
               <NGLViewer 
-                proteins={(session.proteinSources as any[]).map(s => ({
-                  pdbId: s.pdbId,
-                  name: s.name
-                }))}
+                proteins={[{
+                  pdbId: (session.proteinSource as any).pdbId,
+                  name: (session.proteinSource as any).name
+                }]}
                 className="w-full h-full"
               />
             </div>
