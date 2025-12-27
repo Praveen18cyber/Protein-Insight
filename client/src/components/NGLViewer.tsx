@@ -128,11 +128,47 @@ function NGLViewerComponent({ proteins = [], className, highlightResidues = [] }
 
   }, [proteins]);
 
-  // Highlight residues are passed but not used yet - reserved for future enhancement
+  // Update highlighted residues
   useEffect(() => {
-    // Feature 1 data is available in highlightResidues but 3D highlighting
-    // is deferred to maintain stability. Interface residue data is available
-    // in the backend and frontend for future visualization enhancements.
+    if (!stageRef.current || componentsRef.current.length === 0) return;
+
+    // Clear existing highlight representations
+    componentsRef.current.forEach(comp => {
+      if (!comp.reprList) return;
+      const reprsToRemove = comp.reprList.filter((r: any) => r.name === "highlight-interface");
+      reprsToRemove.forEach((repr: any) => {
+        try {
+          comp.removeRepresentation(repr);
+        } catch (e) {
+          // Ignore removal errors
+        }
+      });
+    });
+
+    // Add highlight only if toggled on
+    if (highlightResidues.length > 0) {
+      componentsRef.current.forEach(component => {
+        try {
+          // Use NGL's proper selection syntax: "resno 1 or resno 2 or ..."
+          const selectionString = highlightResidues
+            .map(r => `resno ${r.residueSeq}`)
+            .join(" or ");
+          
+          if (selectionString) {
+            component.addRepresentation("cartoon", {
+              sele: selectionString,
+              colorScheme: "uniform",
+              color: "hotpink",
+              quality: "medium",
+              aspectRatio: 5.0,
+              name: "highlight-interface",
+            });
+          }
+        } catch (err) {
+          // Silently ignore highlighting errors
+        }
+      });
+    }
   }, [highlightResidues]);
 
   const toggleFullscreen = () => {
