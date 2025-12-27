@@ -145,21 +145,21 @@ export default function AnalysisResultPage() {
 
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
           <div className="flex flex-col gap-6 min-h-0 overflow-y-auto">
+            <div className="space-y-3 shrink-0">
+              <button
+                onClick={() => setShowInterfaceOnly(!showInterfaceOnly)}
+                data-testid="button-toggle-interface"
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
+                  showInterfaceOnly 
+                    ? 'bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100' 
+                    : 'bg-white border-border text-foreground hover:bg-muted/50'
+                }`}
+              >
+                {showInterfaceOnly ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                {showInterfaceOnly ? 'Showing Interface Residues Only' : 'Show Interface Residues Only'}
+              </button>
+            </div>
             <div className="bg-white rounded-2xl border border-border shadow-sm p-1 h-96 shrink-0">
-              <div className="absolute top-4 left-4 z-30">
-                <button
-                  onClick={() => setShowInterfaceOnly(!showInterfaceOnly)}
-                  data-testid="button-toggle-interface"
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-xs font-medium ${
-                    showInterfaceOnly 
-                      ? 'bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100' 
-                      : 'bg-white border-border text-foreground hover:bg-muted/50'
-                  }`}
-                >
-                  {showInterfaceOnly ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-                  {showInterfaceOnly ? 'Interface Only' : 'Show All Residues'}
-                </button>
-              </div>
               <NGLViewer 
                 proteins={[{
                   pdbId: (session.proteinSource as any).pdbId,
