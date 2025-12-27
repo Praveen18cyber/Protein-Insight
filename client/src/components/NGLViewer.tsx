@@ -145,29 +145,33 @@ function NGLViewerComponent({ proteins = [], className, highlightResidues = [] }
     // Add new highlight representations
     if (highlightResidues.length > 0) {
       componentsRef.current.forEach(component => {
-        // Build selection string for interface residues
+        // Build selection string for interface residues using proper NGL syntax
         const selections = highlightResidues
-          .map(r => `(${r.chainId} and ${r.residueSeq})`)
+          .map(r => `${r.chainId} ${r.residueSeq}`)
           .join(" or ");
         
         if (selections) {
-          component.addRepresentation("cartoon", {
-            sele: selections,
-            colorScheme: "uniform",
-            color: 0xff1493, // Deep pink for interface
-            quality: "medium",
-            aspectRatio: 5.0,
-            name: "highlight-interface",
-          });
+          try {
+            component.addRepresentation("cartoon", {
+              sele: selections,
+              colorScheme: "uniform",
+              color: 0xff1493, // Deep pink for interface
+              quality: "medium",
+              aspectRatio: 5.0,
+              name: "highlight-interface",
+            });
 
-          component.addRepresentation("ball+stick", {
-            sele: `(${selections}) and sidechainAttached`,
-            colorScheme: "uniform",
-            color: 0xff1493,
-            scale: 1.0,
-            aspectRatio: 1.0,
-            name: "highlight-interface",
-          });
+            component.addRepresentation("ball+stick", {
+              sele: selections,
+              colorScheme: "uniform",
+              color: 0xff1493,
+              scale: 1.0,
+              aspectRatio: 1.0,
+              name: "highlight-interface",
+            });
+          } catch (err) {
+            console.error("Error highlighting residues:", err);
+          }
         }
       });
     }
