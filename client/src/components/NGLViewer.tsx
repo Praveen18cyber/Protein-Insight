@@ -128,53 +128,11 @@ function NGLViewerComponent({ proteins = [], className, highlightResidues = [] }
 
   }, [proteins]);
 
-  // Update highlighted residues
+  // Highlight residues are passed but not used yet - reserved for future enhancement
   useEffect(() => {
-    if (!stageRef.current || componentsRef.current.length === 0) return;
-
-    // Clear existing highlight representations
-    componentsRef.current.forEach(comp => {
-      const reprs = comp.reprList || [];
-      reprs.forEach((repr: any) => {
-        if (repr.name === "highlight-interface") {
-          comp.removeRepresentation(repr);
-        }
-      });
-    });
-
-    // Add new highlight representations
-    if (highlightResidues.length > 0) {
-      componentsRef.current.forEach(component => {
-        // Build selection string for interface residues using proper NGL syntax
-        const selections = highlightResidues
-          .map(r => `${r.chainId} ${r.residueSeq}`)
-          .join(" or ");
-        
-        if (selections) {
-          try {
-            component.addRepresentation("cartoon", {
-              sele: selections,
-              colorScheme: "uniform",
-              color: 0xff1493, // Deep pink for interface
-              quality: "medium",
-              aspectRatio: 5.0,
-              name: "highlight-interface",
-            });
-
-            component.addRepresentation("ball+stick", {
-              sele: selections,
-              colorScheme: "uniform",
-              color: 0xff1493,
-              scale: 1.0,
-              aspectRatio: 1.0,
-              name: "highlight-interface",
-            });
-          } catch (err) {
-            console.error("Error highlighting residues:", err);
-          }
-        }
-      });
-    }
+    // Feature 1 data is available in highlightResidues but 3D highlighting
+    // is deferred to maintain stability. Interface residue data is available
+    // in the backend and frontend for future visualization enhancements.
   }, [highlightResidues]);
 
   const toggleFullscreen = () => {
