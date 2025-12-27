@@ -3,17 +3,26 @@ import { useAnalysis, useDownloadUrls } from "@/hooks/use-analysis";
 import { NGLViewer } from "@/components/NGLViewer";
 import { InteractionTable } from "@/components/InteractionTable";
 import { InteractionCharts } from "@/components/Charts";
-import { Loader2, Download, AlertCircle, ArrowLeft, Dna, Zap, Link as LinkIcon } from "lucide-react";
+import { Loader2, Download, AlertCircle, ArrowLeft, Dna, Zap, Link as LinkIcon, Eye, EyeOff } from "lucide-react";
 import { Link } from "wouter";
 import { AnalysisResult } from "@shared/schema";
-import React from "react";
+import React, { useState, useMemo } from "react";
 
 export default function AnalysisResultPage() {
   const [match, params] = useRoute("/analysis/:id");
   const id = match ? parseInt(params.id) : null;
+  const [showInterfaceOnly, setShowInterfaceOnly] = useState(false);
   
   const { data: session, isLoading, error } = useAnalysis(id);
   const { interProteinUrl, intraProteinUrl, structureUrl } = useDownloadUrls(id || 0);
+
+  const result = session?.result as unknown as AnalysisResult | undefined;
+  const interfaceResidues = useMemo(() => {
+    if (!result?.interfaceResidues || !showInterfaceOnly) return [];
+    return Object.entries(result.interfaceResidues).flatMap(([chainKey, residues]) =>
+      residues.map(r => ({ chainId: r.chainId, residueSeq: r.residueSeq }))
+    );
+  }, [result?.interfaceResidues, showInterfaceOnly]);
 
   if (isLoading || !session) {
     return (
@@ -43,8 +52,6 @@ export default function AnalysisResultPage() {
       </div>
     );
   }
-
-  const result = session.result as unknown as AnalysisResult;
 
   if (session.status === 'pending' || session.status === 'processing') {
     return (
@@ -139,11 +146,26 @@ export default function AnalysisResultPage() {
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
           <div className="flex flex-col gap-6 min-h-0 overflow-y-auto">
             <div className="bg-white rounded-2xl border border-border shadow-sm p-1 h-96 shrink-0">
+              <div className="absolute top-4 left-4 z-30">
+                <button
+                  onClick={() => setShowInterfaceOnly(!showInterfaceOnly)}
+                  data-testid="button-toggle-interface"
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-colors text-xs font-medium ${
+                    showInterfaceOnly 
+                      ? 'bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100' 
+                      : 'bg-white border-border text-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  {showInterfaceOnly ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                  {showInterfaceOnly ? 'Interface Only' : 'Show All Residues'}
+                </button>
+              </div>
               <NGLViewer 
                 proteins={[{
                   pdbId: (session.proteinSource as any).pdbId,
                   name: (session.proteinSource as any).name
                 }]}
+                highlightResidues={interfaceResidues}
                 className="w-full h-full"
               />
             </div>

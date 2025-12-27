@@ -78,6 +78,14 @@ export const InteractionSchema = z.object({
   isIntraMolecular: z.boolean(), // True if same protein, False if between proteins
 });
 
+export const InterfaceResidueSchema = z.object({
+  chainId: z.string(),
+  residueSeq: z.number(),
+  residueName: z.string(),
+  interactionCount: z.number(),
+  interactionTypes: z.array(z.string()),
+});
+
 export const ChainMetricsSchema = z.object({
   proteinName: z.string(),
   chainId: z.string(),
@@ -99,12 +107,14 @@ export const AnalysisResultSchema = z.object({
   }),
   chains: z.array(ChainMetricsSchema),
   interactions: z.array(InteractionSchema),
+  interfaceResidues: z.record(z.string(), z.array(InterfaceResidueSchema)).optional(),
 });
 
 export type Atom = z.infer<typeof AtomSchema>;
 export type Interaction = z.infer<typeof InteractionSchema>;
 export type AnalysisResult = z.infer<typeof AnalysisResultSchema>;
 export type ProteinSource = z.infer<typeof ProteinSourceSchema>;
+export type InterfaceResidue = z.infer<typeof InterfaceResidueSchema>;
 
 // Request types
 export type CreateAnalysisRequest = z.infer<typeof insertAnalysisSessionSchema> & {

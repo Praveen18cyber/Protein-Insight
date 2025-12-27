@@ -1,4 +1,4 @@
-import type { Atom, Interaction, AnalysisResult } from "@shared/schema";
+import type { Atom, Interaction, AnalysisResult, InterfaceResidue } from "@shared/schema";
 
 // 1. PDB STRUCTURE EXTRACTION
 export function parsePDB(content: string, proteinName: string): Atom[] {
@@ -181,6 +181,43 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
   const intraCount = interactions.filter(i => i.isIntraMolecular).length;
   const interCount = totalInteractions - intraCount;
 
+  // Build interface residues data
+  const interfaceResiduesByChain: Record<string, Map<number, { name: string; types: Set<string> }>> = {};
+  
+  for (const interaction of interactions) {
+    // Track residue A
+    const keyA = `${interaction.proteinA}:${interaction.chainA}`;
+    if (!interfaceResiduesByChain[keyA]) interfaceResiduesByChain[keyA] = new Map();
+    const resSeqA = parseInt(interaction.residueA.split(' ')[1]);
+    const resNameA = interaction.residueA.split(' ')[0];
+    if (!interfaceResiduesByChain[keyA].has(resSeqA)) {
+      interfaceResiduesByChain[keyA].set(resSeqA, { name: resNameA, types: new Set() });
+    }
+    interfaceResiduesByChain[keyA].get(resSeqA)!.types.add(interaction.type);
+
+    // Track residue B
+    const keyB = `${interaction.proteinB}:${interaction.chainB}`;
+    if (!interfaceResiduesByChain[keyB]) interfaceResiduesByChain[keyB] = new Map();
+    const resSeqB = parseInt(interaction.residueB.split(' ')[1]);
+    const resNameB = interaction.residueB.split(' ')[0];
+    if (!interfaceResiduesByChain[keyB].has(resSeqB)) {
+      interfaceResiduesByChain[keyB].set(resSeqB, { name: resNameB, types: new Set() });
+    }
+    interfaceResiduesByChain[keyB].get(resSeqB)!.types.add(interaction.type);
+  }
+
+  // Convert to array format
+  const interfaceResidues: Record<string, InterfaceResidue[]> = {};
+  for (const [chainKey, residues] of Object.entries(interfaceResiduesByChain)) {
+    interfaceResidues[chainKey] = Array.from(residues.entries()).map(([resSeq, data]) => ({
+      chainId: chainKey.split(':')[1],
+      residueSeq: resSeq,
+      residueName: data.name,
+      interactionCount: 0, // Will be calculated per residue in feature 2
+      interactionTypes: Array.from(data.types),
+    }));
+  }
+
   return {
     summary: {
       totalProteins: proteins.length,
@@ -191,7 +228,8 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
       interProteinInteractions: interCount,
     },
     chains: chainMetrics,
-    interactions
+    interactions,
+    interfaceResidues,
   };
 }
 

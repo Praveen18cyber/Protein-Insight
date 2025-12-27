@@ -12,15 +12,17 @@ interface ProteinToLoad {
 interface NGLViewerProps {
   proteins?: ProteinToLoad[];
   className?: string;
+  highlightResidues?: Array<{ chainId: string; residueSeq: number }>;
 }
 
-function NGLViewerComponent({ proteins = [], className }: NGLViewerProps) {
+function NGLViewerComponent({ proteins = [], className, highlightResidues = [] }: NGLViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
+  const componentsRef = useRef<any[]>([]);
 
   // Initialize Stage
   useEffect(() => {
@@ -102,6 +104,7 @@ function NGLViewerComponent({ proteins = [], className }: NGLViewerProps) {
               aspectRatio: 1.0
             });
 
+            componentsRef.current.push(component);
             successCount++;
             setLoadedCount(successCount);
             return true;
@@ -124,6 +127,51 @@ function NGLViewerComponent({ proteins = [], className }: NGLViewerProps) {
     });
 
   }, [proteins]);
+
+  // Update highlighted residues
+  useEffect(() => {
+    if (!stageRef.current || componentsRef.current.length === 0) return;
+
+    // Clear existing highlight representations
+    componentsRef.current.forEach(comp => {
+      const reprs = comp.reprList || [];
+      reprs.forEach((repr: any) => {
+        if (repr.name === "highlight-interface") {
+          comp.removeRepresentation(repr);
+        }
+      });
+    });
+
+    // Add new highlight representations
+    if (highlightResidues.length > 0) {
+      componentsRef.current.forEach(component => {
+        // Build selection string for interface residues
+        const selections = highlightResidues
+          .map(r => `(${r.chainId} and ${r.residueSeq})`)
+          .join(" or ");
+        
+        if (selections) {
+          component.addRepresentation("cartoon", {
+            sele: selections,
+            colorScheme: "uniform",
+            color: 0xff1493, // Deep pink for interface
+            quality: "medium",
+            aspectRatio: 5.0,
+            name: "highlight-interface",
+          });
+
+          component.addRepresentation("ball+stick", {
+            sele: `(${selections}) and sidechainAttached`,
+            colorScheme: "uniform",
+            color: 0xff1493,
+            scale: 1.0,
+            aspectRatio: 1.0,
+            name: "highlight-interface",
+          });
+        }
+      });
+    }
+  }, [highlightResidues]);
 
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
