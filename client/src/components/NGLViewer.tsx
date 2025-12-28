@@ -155,12 +155,11 @@ function NGLViewerComponent({ proteins = [], className, highlightResidues = [] }
             .join(" or ");
           
           if (selectionString) {
-            component.addRepresentation("cartoon", {
+            // Use licorice representation with hotpink color for clear visibility
+            component.addRepresentation("licorice", {
               sele: selectionString,
               colorScheme: "uniform",
               color: "hotpink",
-              quality: "medium",
-              aspectRatio: 5.0,
               name: "highlight-interface",
             });
           }

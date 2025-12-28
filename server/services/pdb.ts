@@ -107,7 +107,8 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
             // 5 Angstrom cutoff
             if (distSq <= 25) {
               const distance = Math.sqrt(distSq);
-              const isIntra = atom_a.proteinName === atom_b.proteinName;
+              // Inter-molecular if different proteins OR different chains within same protein
+              const isIntra = atom_a.proteinName === atom_b.proteinName && atom_a.chainID === atom_b.chainID;
               
               // Determine interaction type
               let type: Interaction["type"] = "Other";
