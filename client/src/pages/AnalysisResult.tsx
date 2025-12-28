@@ -3,7 +3,8 @@ import { useAnalysis, useDownloadUrls } from "@/hooks/use-analysis";
 import { NGLViewer } from "@/components/NGLViewer";
 import { InteractionTable } from "@/components/InteractionTable";
 import { InteractionCharts } from "@/components/Charts";
-import { Loader2, Download, AlertCircle, ArrowLeft, Dna, Zap, Link as LinkIcon, Eye, EyeOff } from "lucide-react";
+import { DensityVisualization } from "@/components/DensityVisualization";
+import { Loader2, Download, AlertCircle, ArrowLeft, Dna, Zap, Link as LinkIcon, Eye, EyeOff, TrendingUp } from "lucide-react";
 import { Link } from "wouter";
 import { AnalysisResult } from "@shared/schema";
 import React, { useState, useMemo } from "react";
@@ -12,6 +13,7 @@ export default function AnalysisResultPage() {
   const [match, params] = useRoute("/analysis/:id");
   const id = match ? parseInt(params.id) : null;
   const [showInterfaceOnly, setShowInterfaceOnly] = useState(false);
+  const [showDensity, setShowDensity] = useState(false);
   
   const { data: session, isLoading, error } = useAnalysis(id);
   const { interProteinUrl, intraProteinUrl, structureUrl } = useDownloadUrls(id || 0);
@@ -145,7 +147,7 @@ export default function AnalysisResultPage() {
 
         <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
           <div className="flex flex-col gap-6 min-h-0 overflow-y-auto">
-            <div className="space-y-3 shrink-0">
+            <div className="space-y-2 shrink-0">
               <button
                 onClick={() => setShowInterfaceOnly(!showInterfaceOnly)}
                 data-testid="button-toggle-interface"
@@ -158,17 +160,39 @@ export default function AnalysisResultPage() {
                 {showInterfaceOnly ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 {showInterfaceOnly ? 'Showing Interface Residues Only' : 'Show Interface Residues Only'}
               </button>
+              <button
+                onClick={() => setShowDensity(!showDensity)}
+                data-testid="button-toggle-density"
+                className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border transition-colors text-sm font-medium ${
+                  showDensity 
+                    ? 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100' 
+                    : 'bg-white border-border text-foreground hover:bg-muted/50'
+                }`}
+              >
+                {showDensity ? <TrendingUp className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
+                {showDensity ? 'Showing Interaction Density' : 'Show Interaction Density'}
+              </button>
             </div>
-            <div className="bg-white rounded-2xl border border-border shadow-sm p-1 h-96 shrink-0">
-              <NGLViewer 
-                proteins={[{
-                  pdbId: (session.proteinSource as any).pdbId,
-                  name: (session.proteinSource as any).name
-                }]}
-                highlightResidues={interfaceResidues}
-                className="w-full h-full"
-              />
-            </div>
+            {showDensity ? (
+              <div className="bg-white rounded-2xl border border-border shadow-sm p-4 h-96 shrink-0">
+                <h3 className="font-semibold text-sm mb-2 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-purple-600" />
+                  Interaction Density Hotspots
+                </h3>
+                <DensityVisualization data={result?.interactionDensity} />
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl border border-border shadow-sm p-1 h-96 shrink-0">
+                <NGLViewer 
+                  proteins={[{
+                    pdbId: (session.proteinSource as any).pdbId,
+                    name: (session.proteinSource as any).name
+                  }]}
+                  highlightResidues={interfaceResidues}
+                  className="w-full h-full"
+                />
+              </div>
+            )}
             
             <div className="shrink-0">
               <InteractionCharts interactions={result?.interactions || []} />

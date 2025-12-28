@@ -108,6 +108,13 @@ export const AnalysisResultSchema = z.object({
   chains: z.array(ChainMetricsSchema),
   interactions: z.array(InteractionSchema),
   interfaceResidues: z.record(z.string(), z.array(InterfaceResidueSchema)).optional(),
+  interactionDensity: z.record(z.string(), z.array(z.object({
+    residueSeq: z.number(),
+    residueName: z.string(),
+    intraCount: z.number(),
+    interCount: z.number(),
+    totalCount: z.number(),
+  }))).optional(),
 });
 
 export type Atom = z.infer<typeof AtomSchema>;

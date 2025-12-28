@@ -182,29 +182,50 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
   const intraCount = interactions.filter(i => i.isIntraMolecular).length;
   const interCount = totalInteractions - intraCount;
 
-  // Build interface residues data
+  // Build interface residues data and interaction density
   const interfaceResiduesByChain: Record<string, Map<number, { name: string; types: Set<string> }>> = {};
+  const densityByChain: Record<string, Map<number, { name: string; intra: number; inter: number }>> = {};
   
   for (const interaction of interactions) {
     // Track residue A
     const keyA = `${interaction.proteinA}:${interaction.chainA}`;
     if (!interfaceResiduesByChain[keyA]) interfaceResiduesByChain[keyA] = new Map();
+    if (!densityByChain[keyA]) densityByChain[keyA] = new Map();
+    
     const resSeqA = parseInt(interaction.residueA.split(' ')[1]);
     const resNameA = interaction.residueA.split(' ')[0];
+    
     if (!interfaceResiduesByChain[keyA].has(resSeqA)) {
       interfaceResiduesByChain[keyA].set(resSeqA, { name: resNameA, types: new Set() });
     }
     interfaceResiduesByChain[keyA].get(resSeqA)!.types.add(interaction.type);
+    
+    if (!densityByChain[keyA].has(resSeqA)) {
+      densityByChain[keyA].set(resSeqA, { name: resNameA, intra: 0, inter: 0 });
+    }
+    const densityA = densityByChain[keyA].get(resSeqA)!;
+    if (interaction.isIntraMolecular) densityA.intra++;
+    else densityA.inter++;
 
     // Track residue B
     const keyB = `${interaction.proteinB}:${interaction.chainB}`;
     if (!interfaceResiduesByChain[keyB]) interfaceResiduesByChain[keyB] = new Map();
+    if (!densityByChain[keyB]) densityByChain[keyB] = new Map();
+    
     const resSeqB = parseInt(interaction.residueB.split(' ')[1]);
     const resNameB = interaction.residueB.split(' ')[0];
+    
     if (!interfaceResiduesByChain[keyB].has(resSeqB)) {
       interfaceResiduesByChain[keyB].set(resSeqB, { name: resNameB, types: new Set() });
     }
     interfaceResiduesByChain[keyB].get(resSeqB)!.types.add(interaction.type);
+    
+    if (!densityByChain[keyB].has(resSeqB)) {
+      densityByChain[keyB].set(resSeqB, { name: resNameB, intra: 0, inter: 0 });
+    }
+    const densityB = densityByChain[keyB].get(resSeqB)!;
+    if (interaction.isIntraMolecular) densityB.intra++;
+    else densityB.inter++;
   }
 
   // Convert to array format
@@ -214,9 +235,21 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
       chainId: chainKey.split(':')[1],
       residueSeq: resSeq,
       residueName: data.name,
-      interactionCount: 0, // Will be calculated per residue in feature 2
+      interactionCount: 0,
       interactionTypes: Array.from(data.types),
     }));
+  }
+
+  // Convert density to array format
+  const interactionDensity: Record<string, Array<{ residueSeq: number; residueName: string; intraCount: number; interCount: number; totalCount: number }>> = {};
+  for (const [chainKey, density] of Object.entries(densityByChain)) {
+    interactionDensity[chainKey] = Array.from(density.entries()).map(([resSeq, data]) => ({
+      residueSeq: resSeq,
+      residueName: data.name,
+      intraCount: data.intra,
+      interCount: data.inter,
+      totalCount: data.intra + data.inter,
+    })).sort((a, b) => b.totalCount - a.totalCount);
   }
 
   return {
@@ -231,6 +264,7 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
     chains: chainMetrics,
     interactions,
     interfaceResidues,
+    interactionDensity,
   };
 }
 
