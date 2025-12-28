@@ -252,6 +252,37 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
     })).sort((a, b) => b.totalCount - a.totalCount);
   }
 
+  // Build chain-to-chain interaction summary
+  const chainPairMap: Record<string, { intra: number; inter: number }> = {};
+  for (const interaction of interactions) {
+    // Create consistent pair keys (sort to avoid duplicates)
+    const pair = [
+      `${interaction.proteinA}:${interaction.chainA}`,
+      `${interaction.proteinB}:${interaction.chainB}`,
+    ].sort().join(' <-> ');
+
+    if (!chainPairMap[pair]) {
+      chainPairMap[pair] = { intra: 0, inter: 0 };
+    }
+
+    if (interaction.isIntraMolecular) {
+      chainPairMap[pair].intra++;
+    } else {
+      chainPairMap[pair].inter++;
+    }
+  }
+
+  const chainInteractionSummary = Object.entries(chainPairMap).map(([pair, counts]) => {
+    const [chainA, chainB] = pair.split(' <-> ');
+    return {
+      chainA,
+      chainB,
+      intraCount: counts.intra,
+      interCount: counts.inter,
+      totalCount: counts.intra + counts.inter,
+    };
+  }).sort((a, b) => b.totalCount - a.totalCount);
+
   return {
     summary: {
       totalProteins: proteins.length,
@@ -265,6 +296,7 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
     interactions,
     interfaceResidues,
     interactionDensity,
+    chainInteractionSummary,
   };
 }
 

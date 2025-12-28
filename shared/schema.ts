@@ -115,6 +115,13 @@ export const AnalysisResultSchema = z.object({
     interCount: z.number(),
     totalCount: z.number(),
   }))).optional(),
+  chainInteractionSummary: z.array(z.object({
+    chainA: z.string(),
+    chainB: z.string(),
+    intraCount: z.number(),
+    interCount: z.number(),
+    totalCount: z.number(),
+  })).optional(),
 });
 
 export type Atom = z.infer<typeof AtomSchema>;
