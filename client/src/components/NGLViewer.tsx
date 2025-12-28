@@ -130,7 +130,15 @@ function NGLViewerComponent({ proteins = [], className, highlightResidues = [] }
 
   // Update highlighted residues
   useEffect(() => {
-    if (!stageRef.current || componentsRef.current.length === 0) return;
+    if (!stageRef.current || componentsRef.current.length === 0) {
+      console.log("NGLViewer: Skipping highlight - stage or components not ready", {
+        hasStage: !!stageRef.current,
+        componentCount: componentsRef.current.length,
+      });
+      return;
+    }
+
+    console.log("NGLViewer: Processing highlight for", highlightResidues.length, "residues", highlightResidues);
 
     // Clear existing highlight representations
     componentsRef.current.forEach(comp => {
@@ -139,8 +147,9 @@ function NGLViewerComponent({ proteins = [], className, highlightResidues = [] }
       reprsToRemove.forEach((repr: any) => {
         try {
           comp.removeRepresentation(repr);
+          console.log("NGLViewer: Removed highlight representation");
         } catch (e) {
-          // Ignore removal errors
+          console.log("NGLViewer: Error removing representation", e);
         }
       });
     });
@@ -154,17 +163,20 @@ function NGLViewerComponent({ proteins = [], className, highlightResidues = [] }
             .map(r => `resno ${r.residueSeq}`)
             .join(" or ");
           
+          console.log("NGLViewer: Adding highlight with selection:", selectionString);
+          
           if (selectionString) {
-            // Use licorice representation with hotpink color for clear visibility
-            component.addRepresentation("licorice", {
+            // Use ball+stick representation with hotpink color for clear visibility
+            component.addRepresentation("ball+stick", {
               sele: selectionString,
               colorScheme: "uniform",
               color: "hotpink",
               name: "highlight-interface",
             });
+            console.log("NGLViewer: Highlight representation added successfully");
           }
         } catch (err) {
-          // Silently ignore highlighting errors
+          console.log("NGLViewer: Error adding highlight", err);
         }
       });
     }
