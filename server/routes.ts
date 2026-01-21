@@ -90,6 +90,16 @@ export async function registerRoutes(
     if (!session) {
       return res.status(404).json({ message: "Analysis session not found" });
     }
+
+    // Optimization: Truncate interactions for UI stability if it's a huge result
+    if (session.result && typeof session.result === 'object') {
+      const result = session.result as any;
+      if (Array.isArray(result.interactions) && result.interactions.length > 1000) {
+        result.fullInteractionsCount = result.interactions.length;
+        result.interactions = result.interactions.slice(0, 1000);
+      }
+    }
+    
     res.json(session);
   });
 

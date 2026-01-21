@@ -182,7 +182,7 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
   const intraCount = interactions.filter(i => i.isIntraMolecular).length;
   const interCount = totalInteractions - intraCount;
 
-  // Build interface residues data and interaction density
+  // 5. Build interface residues data and interaction density
   const interfaceResiduesByChain: Record<string, Map<number, { name: string; types: Set<string> }>> = {};
   const densityByChain: Record<string, Map<number, { name: string; intra: number; inter: number }>> = {};
   
@@ -252,10 +252,9 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
     })).sort((a, b) => b.totalCount - a.totalCount);
   }
 
-  // Build chain-to-chain interaction summary
+  // 6. Build chain-to-chain interaction summary
   const chainPairMap: Record<string, { intra: number; inter: number }> = {};
   for (const interaction of interactions) {
-    // Create consistent pair keys (sort to avoid duplicates)
     const pair = [
       `${interaction.proteinA}:${interaction.chainA}`,
       `${interaction.proteinB}:${interaction.chainB}`,
@@ -283,6 +282,10 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
     };
   }).sort((a, b) => b.totalCount - a.totalCount);
 
+  // 7. Limit raw interactions for UI stability (top 1000)
+  // We keep the full list for CSV generation, but return a subset for the UI result object
+  // if it's too large. However, we'll store the full result in DB for downloads.
+  
   return {
     summary: {
       totalProteins: proteins.length,
@@ -293,7 +296,7 @@ export function analyzeInteractions(atomsByProtein: Record<string, Atom[]>): Ana
       interProteinInteractions: interCount,
     },
     chains: chainMetrics,
-    interactions,
+    interactions, // Keep full for now, but we will truncate in the route if needed
     interfaceResidues,
     interactionDensity,
     chainInteractionSummary,

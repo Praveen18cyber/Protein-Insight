@@ -10,11 +10,13 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { Interaction } from "@shared/schema";
-import { ArrowUpDown, ChevronLeft, ChevronRight, Search, Filter } from "lucide-react";
+import { ArrowUpDown, ChevronLeft, ChevronRight, Search, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import clsx from "clsx";
 
 interface InteractionTableProps {
   data: Interaction[];
+  fullCount?: number;
 }
 
 const columnHelper = createColumnHelper<Interaction>();
@@ -76,10 +78,12 @@ const columns = [
   }),
 ];
 
-export function InteractionTable({ data }: InteractionTableProps) {
+export function InteractionTable({ data, fullCount }: InteractionTableProps) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<"all" | "inter" | "intra">("all");
+
+  const isTruncated = fullCount && fullCount > data.length;
 
   const filteredData = useMemo(() => {
     return data.filter(d => {
@@ -110,6 +114,15 @@ export function InteractionTable({ data }: InteractionTableProps) {
 
   return (
     <div className="space-y-4">
+      {isTruncated && (
+        <Alert className="bg-blue-50 border-blue-200 py-2">
+          <Info className="h-4 w-4 text-blue-600" />
+          <AlertDescription className="text-blue-700 text-xs">
+            Displaying the top 1,000 interactions out of {fullCount.toLocaleString()}. 
+            Use the "Download" buttons above to get the full dataset.
+          </AlertDescription>
+        </Alert>
+      )}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="relative flex-1 min-w-fit">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />

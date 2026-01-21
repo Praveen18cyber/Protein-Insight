@@ -239,7 +239,10 @@ export default function AnalysisResultPage() {
             <div className="flex-1 overflow-hidden">
               {activeTab === "interactions" ? (
                 <div className="p-4 overflow-y-auto h-full">
-                  <InteractionTable data={result?.interactions || []} />
+                  <InteractionTable 
+                    data={result?.interactions || []} 
+                    fullCount={result?.fullInteractionsCount}
+                  />
                 </div>
               ) : (
                 <div className="p-4 overflow-y-auto h-full">

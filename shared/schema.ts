@@ -107,6 +107,7 @@ export const AnalysisResultSchema = z.object({
   }),
   chains: z.array(ChainMetricsSchema),
   interactions: z.array(InteractionSchema),
+  fullInteractionsCount: z.number().optional(),
   interfaceResidues: z.record(z.string(), z.array(InterfaceResidueSchema)).optional(),
   interactionDensity: z.record(z.string(), z.array(z.object({
     residueSeq: z.number(),
