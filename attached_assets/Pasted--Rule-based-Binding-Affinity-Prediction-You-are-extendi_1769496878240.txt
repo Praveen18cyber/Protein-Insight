@@ -1,0 +1,122 @@
+(Rule-based Binding Affinity Prediction)
+
+You are extending an existing bioinformatics web application called Protein Insight, built using Replit, that performs protein–protein interaction (PPI) analysis from PDB structures.
+
+The current system already:
+
+Accepts PDB ID input
+
+Fetches structures from RCSB PDB
+
+Detects non-covalent interactions:
+
+Hydrogen bonds
+
+Salt bridges
+
+Hydrophobic interactions
+
+Van der Waals interactions
+
+Computes inter-protein and intra-protein interaction counts
+
+Displays interaction tables, charts, and 3D visualization
+
+FEATURE: RULE-BASED BINDING AFFINITY INDEX
+
+Implement a computational Binding Affinity Index (BAI) that estimates relative interaction strength using already-calculated structural interaction features.
+
+⚠️ This is NOT experimental ΔG prediction and should be presented as a relative affinity score.
+
+SCORING MODEL
+
+Compute the Binding Affinity Index using the following weighted formula:
+
+BAI =
+(1.5 × hydrogen_bond_count)
++ (2.0 × salt_bridge_count)
++ (1.0 × hydrophobic_contact_count)
++ (0.2 × van_der_waals_contact_count)
+− (0.5 × average_interaction_distance)
+
+
+Normalize the final score to a 0–100 scale
+
+Categorize binding strength as:
+
+Weak (0–40)
+
+Moderate (41–70)
+
+Strong (71–100)
+
+BACKEND IMPLEMENTATION
+
+Use the existing interaction analysis results as input
+
+Implement a utility function:
+
+calculateBindingAffinityIndex(interactionStats)
+
+Ensure calculations are fast and server-safe
+
+Return results as JSON
+
+Example JSON:
+
+{
+  "bindingAffinityIndex": 78,
+  "bindingCategory": "Strong",
+  "featureContributions": {
+    "hydrogenBonds": 36,
+    "saltBridges": 24,
+    "hydrophobicContacts": 15,
+    "vanDerWaals": 8,
+    "distancePenalty": -5
+  }
+}
+
+FRONTEND REQUIREMENTS
+
+Display the Binding Affinity Index as:
+
+A progress bar or gauge
+
+A numeric score (0–100)
+
+A strength label (Weak / Moderate / Strong)
+
+Add a small chart showing feature contributions
+
+Keep UI consistent with the existing Protein Insight dashboard
+
+COMPARISON SUPPORT
+
+When two PDB structures are analyzed:
+
+Compute Binding Affinity Index for both
+
+Display them side-by-side
+
+Highlight which structure has stronger binding
+
+SCIENTIFIC CONSTRAINTS
+
+Clearly label the output as:
+“Relative Binding Affinity Index (Structure-based)”
+
+Do NOT claim experimental accuracy
+
+Add comments explaining the biological reasoning behind weights
+
+OUTPUT EXPECTATIONS
+
+Modify existing files only where required
+
+Keep code modular and readable
+
+Ensure the application runs successfully in Replit
+
+Prioritize correctness and explainability over complexity
+
+Implement this feature incrementally and safely.

@@ -1,0 +1,21 @@
+node_modules
+dist
+.DS_Store
+server/public
+vite.config.ts.*
+*.tar.gz
+# Local PostgreSQL database
+database_bad/
+database/
+
+# Logs
+*.log
+error2.log
+
+# Test files
+gql-error.json
+
+# Configuration and environment
+.config/
+.agents/
+.replit
