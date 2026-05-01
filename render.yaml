@@ -3,7 +3,7 @@ services:
     name: protein-insight
     env: node
     buildCommand: npm install && npm run build
-    startCommand: npm start
+    startCommand: node --max-old-space-size=150 dist/index.cjs
     envVars:
       - key: NODE_ENV
         value: production
